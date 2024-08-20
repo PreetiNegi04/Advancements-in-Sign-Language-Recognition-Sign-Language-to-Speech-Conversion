@@ -13,6 +13,12 @@ from utils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
+'''from gtts import gTTS
+import pygame'''
+
+import pyttsx3
+import threading
+import time
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -95,7 +101,7 @@ def main():
 
     #  ########################################################################
     mode = 0
-
+    last_spoken_text = ""
     while True:
         fps = cvFpsCalc.get()
 
@@ -141,6 +147,8 @@ def main():
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
                 if hand_sign_id == "Not applicable":  # Point gesture
                     point_history.append(landmark_list[8])
+
+
                 else:
                     point_history.append([0, 0])
 
@@ -156,6 +164,11 @@ def main():
                 most_common_fg_id = Counter(
                     finger_gesture_history).most_common()
 
+                # Speak the gesture ID if it is different from the last one
+                detected_text = keypoint_classifier_labels[hand_sign_id]
+                if detected_text != last_spoken_text:
+                    last_spoken_text = detected_text
+                    speak_in_background(detected_text)
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
@@ -495,8 +508,10 @@ def draw_info_text(image, brect, handedness, hand_sign_text,
                  (0, 0, 0), -1)
 
     info_text = handedness.classification[0].label[0:]
+    
     if hand_sign_text != "":
         info_text = info_text + ':' + hand_sign_text
+        
     cv.putText(image, info_text, (brect[0] + 5, brect[1] - 4),
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
 
@@ -536,6 +551,32 @@ def draw_info(image, fps, mode, number):
                        cv.LINE_AA)
     return image
 
+'''def play_sound(text):
+    tts = gTTS(text=text, lang='en')
+    tts.save("output.mp3")
+    pygame.mixer.init()
+    pygame.mixer.music.load("output.mp3")
+    pygame.mixer.music.play()'''
+
+def play_sound(text):
+    print("Starting TTS...")
+    try:
+        volume = 1.0  # Volume (0.0)
+        engine = pyttsx3.init()
+        voices = engine.getProperty('voices')
+        engine.setProperty('voice', voices[0].id)
+        # Set volume (0.0 to 1.0)
+        engine.setProperty('volume', volume)
+        engine.say(text)
+        engine.runAndWait()
+        print("TTS Finished.")
+    except Exception as e:
+        print(f"Error in play_sound: {e}")
+
+def speak_in_background(text):
+    tts_thread = threading.Thread(target=play_sound, args=(text,))
+    tts_thread.start()
+    tts_thread.join()
 
 if __name__ == '__main__':
     main()
