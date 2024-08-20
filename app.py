@@ -13,9 +13,6 @@ from utils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
-'''from gtts import gTTS
-import pygame'''
-
 import pyttsx3
 import threading
 import time
