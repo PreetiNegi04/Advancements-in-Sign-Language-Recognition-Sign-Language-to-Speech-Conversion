@@ -191,15 +191,39 @@ def main():
 
 def select_mode(key, mode):
     number = -1
+    
+    # Map 0 ~ 9 (label 0 to 9)
     if 48 <= key <= 57:  # 0 ~ 9
         number = key - 48
-    if key == 110:  # n
+    
+    # Map a ~ z (label 10 to 35)
+    elif 97 <= key <= 122:  # a ~ z
+        number = key - 87  # 'a' becomes 10, 'b' becomes 11, etc.
+    
+    # Map A ~ Z (label 36 to 61)
+    elif 65 <= key <= 90:  # A ~ Z
+        number = key - 29  # 'A' becomes 36, 'B' becomes 37, etc.
+    
+    # Map F1-F12 keys (label 62 to 73)
+    elif 112 <= key <= 123:  # F1 ~ F12
+        number = key - 50  # 'F1' becomes 62, 'F2' becomes 63, etc.
+
+    # Map special keys for label 74 and 75 (Shift, Ctrl, etc.)
+    elif key == 16:  # Shift for label 74
+        number = 74
+    elif key == 17:  # Ctrl for label 75
+        number = 75
+
+    # Custom modes
+    if key == 110:  # n for resetting mode
         mode = 0
-    if key == 107:  # k
+    if key == 107:  # k for some other mode
         mode = 1
-    if key == 104:  # h
+    if key == 104:  # h for another mode
         mode = 2
+
     return number, mode
+
 
 
 def calc_bounding_rect(image, landmarks):
@@ -290,7 +314,7 @@ def logging_csv(number, mode, landmark_list, point_history_list):
     if mode == 0:
         pass
     if mode == 1 and (0 <= number <= 9):
-        csv_path = 'model/keypoint_classifier/keypoint.csv'
+        csv_path = 'model/keypoint_classifier/dataset.csv'
         with open(csv_path, 'a', newline="") as f:
             writer = csv.writer(f)
             writer.writerow([number, *landmark_list])
@@ -556,7 +580,6 @@ def draw_info(image, fps, mode, number):
     pygame.mixer.music.play()'''
 
 def play_sound(text):
-    print("Starting TTS...")
     try:
         volume = 1.0  # Volume (0.0)
         engine = pyttsx3.init()
@@ -566,7 +589,6 @@ def play_sound(text):
         engine.setProperty('volume', volume)
         engine.say(text)
         engine.runAndWait()
-        print("TTS Finished.")
     except Exception as e:
         print(f"Error in play_sound: {e}")
 
