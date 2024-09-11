@@ -17,6 +17,12 @@ import pyttsx3
 import threading
 import time
 
+import torch
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
+tokenizer = GPT2Tokenizer.from_pretrained('distilgpt2')
+model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+
 def get_args():
     parser = argparse.ArgumentParser()
 
@@ -99,6 +105,7 @@ def main():
     #  ########################################################################
     mode = 0
     last_spoken_text = ""
+    word_buffer = []
     while True:
         fps = cvFpsCalc.get()
 
@@ -163,9 +170,27 @@ def main():
 
                 # Speak the gesture ID if it is different from the last one
                 detected_text = keypoint_classifier_labels[hand_sign_id]
+                '''# Process words with NLP to form a sentence
+                sentence = process_words_with_nlp(classified_words)'''
                 if detected_text != last_spoken_text:
                     last_spoken_text = detected_text
-                    speak_in_background(detected_text)
+
+                     # Append classified word to the buffer
+                    word_buffer.append(last_spoken_text)
+
+                    # If buffer has enough words, process them into a sentence
+                    if len(word_buffer) >= 3:
+                        sentence = generate_sentence_from_gpt2(word_buffer)
+                        print(f"Generated Sentence: {sentence}")
+
+                        # Speak the generated sentence
+                        speak_in_background(sentence)
+
+                        # Clear the buffer after processing the sentence
+                        word_buffer.clear()
+
+                    # Wait briefly between frames
+                    time.sleep(0.1)
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
@@ -596,6 +621,45 @@ def speak_in_background(text):
     tts_thread = threading.Thread(target=play_sound, args=(text,))
     tts_thread.start()
     tts_thread.join()
+
+# Function to process recognized words and generate sentences
+def process_words_with_nlp(words):
+    # Tokenize and POS tag the recognized words
+    tokens = word_tokenize(" ".join(words))
+    tagged = pos_tag(tokens)
+    
+    # Example of simple reordering based on POS tags
+    # (You would add more sophisticated logic here)
+    sentence = " ".join([word for word, pos in tagged])
+    
+    return sentence
+
+# Function to generate sentences using GPT-2
+def generate_sentence_from_gpt2(words):
+    # Load pre-trained GPT-2 model and tokenizer
+    '''tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+    model = GPT2LMHeadModel.from_pretrained('gpt2')'''
+
+    # Join the recognized classified words into a prompt
+    input_text = " ".join(words)
+    
+    # Tokenize the input text
+    input_ids = tokenizer.encode(input_text, return_tensors='pt')
+
+    # Generate text from the input sequence
+    with torch.no_grad():
+        output = model.generate(
+            input_ids, 
+            max_length=10,  # Adjust max_length based on your need
+            num_return_sequences=1,
+            no_repeat_ngram_size=2,
+            early_stopping=True
+        )
+
+    # Decode the generated text
+    generated_sentence = tokenizer.decode(output[0], skip_special_tokens=True)
+
+    return generated_sentence
 
 if __name__ == '__main__':
     main()
