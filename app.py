@@ -27,8 +27,8 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--width", help='cap width', type=int, default=960)
-    parser.add_argument("--height", help='cap height', type=int, default=540)
+    parser.add_argument("--width", help='cap width', type=int, default=1000)
+    parser.add_argument("--height", help='cap height', type=int, default=600)
 
     parser.add_argument('--use_static_image_mode', action='store_true')
     parser.add_argument("--min_detection_confidence",
@@ -48,7 +48,6 @@ def get_args():
 def main():
     # Argument parsing #################################################################
     args = get_args()
-
     cap_device = args.device
     cap_width = args.width
     cap_height = args.height
@@ -63,6 +62,12 @@ def main():
     cap = cv.VideoCapture(cap_device)
     cap.set(cv.CAP_PROP_FRAME_WIDTH, cap_width)
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, cap_height)
+
+     # Parameters to control real-time feedback
+    stable_gesture = None
+    stable_count = 0
+    stability_threshold = 5  # Number of frames the gesture must remain stable
+    delay_after_speech = 2  # Seconds to wait after classifying a word
 
     # Model load #############################################################
     mp_hands = mp.solutions.hands
@@ -107,6 +112,7 @@ def main():
     last_spoken_text = ""
     word_buffer = []
     while True:
+        ret, frame = cap.read()
         fps = cvFpsCalc.get()
 
         # Process Key (ESC: end) #################################################
@@ -172,7 +178,7 @@ def main():
                 detected_text = keypoint_classifier_labels[hand_sign_id]
                 '''# Process words with NLP to form a sentence
                 sentence = process_words_with_nlp(classified_words)'''
-                if detected_text != last_spoken_text:
+                '''if detected_text != last_spoken_text:
                     last_spoken_text = detected_text
 
                      # Append classified word to the buffer
@@ -190,7 +196,39 @@ def main():
                         word_buffer.clear()
 
                     # Wait briefly between frames
-                    time.sleep(0.1)
+                    time.sleep(0.1)'''
+
+                # Check if the gesture is stable over consecutive frames
+                if detected_text == stable_gesture:
+                    stable_count += 1
+                else:
+                    stable_gesture = detected_text
+                    stable_count = 0
+                
+                # If the gesture is stable for the required number of frames, process it
+                if stable_count >= stability_threshold:
+                    # Append classified word to the buffer
+                    word_buffer.append(stable_gesture)
+                    # Display the current word and buffer on the screen
+                    display_current_word_on_screen(frame, stable_gesture, word_buffer)
+
+                    # If buffer has enough words, process them into a sentence
+                    if len(word_buffer) >= 3:
+                        sentence = generate_sentence_from_gpt2(word_buffer)
+                        print(f"Generated Sentence: {sentence}")
+
+                        # Speak the generated sentence
+                        speak_in_background(sentence)
+
+                        # Clear the buffer after processing the sentence
+                        word_buffer.clear()
+                    
+                    # Add a delay after classifying the word
+                    time.sleep(delay_after_speech)
+                    # Reset stability tracking to avoid repeated classification
+                    stable_gesture = None
+                    stable_count = 0
+
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
@@ -650,7 +688,7 @@ def generate_sentence_from_gpt2(words):
     with torch.no_grad():
         output = model.generate(
             input_ids, 
-            max_length=10,  # Adjust max_length based on your need
+            max_length=5,  # Adjust max_length based on your need
             num_return_sequences=1,
             no_repeat_ngram_size=2,
             early_stopping=True
@@ -660,6 +698,17 @@ def generate_sentence_from_gpt2(words):
     generated_sentence = tokenizer.decode(output[0], skip_special_tokens=True)
 
     return generated_sentence
+
+# Function to display the current word and buffer on the screen
+def display_current_word_on_screen(frame, current_word, word_buffer):
+    # Display the current classified word
+    cv.putText(frame, f"Current Word: {current_word}", (10, 30),
+                cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv.LINE_AA)
+
+    # Display the buffer of words (concatenated into a sentence)
+    sentence = " ".join(word_buffer)
+    cv.putText(frame, f"Sentence: {sentence}", (10, 70),
+                cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv.LINE_AA)
 
 if __name__ == '__main__':
     main()
