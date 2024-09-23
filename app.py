@@ -18,10 +18,30 @@ import threading
 import time
 
 import torch
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
-tokenizer = GPT2Tokenizer.from_pretrained('distilgpt2')
-model = GPT2LMHeadModel.from_pretrained('distilgpt2')
+'''# Load pre-trained GPT-2 model and tokenizer
+model_name = 'gpt2'
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+model = GPT2LMHeadModel.from_pretrained(model_name)'''
+
+import language_tool_python
+ # Initialize the LanguageTool object
+tool = language_tool_python.LanguageTool('en-US')  # English (US) grammar rules
+
+'''def generate_sentence(classified_words):
+    # Create a prompt from classified words
+    prompt = "Generate a coherent sentence from the following words: " + " ".join(classified_words)
+    
+    # Encode the prompt
+    input_ids = tokenizer.encode(prompt, return_tensors='pt')
+    
+    # Generate text
+    output = model.generate(input_ids, max_length=50, num_return_sequences=1, no_repeat_ngram_size=2, early_stopping=True)
+    
+    # Decode the generated text
+    generated_sentence = tokenizer.decode(output[0], skip_special_tokens=True)
+    return generated_sentence'''
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -207,14 +227,15 @@ def main():
                 
                 # If the gesture is stable for the required number of frames, process it
                 if stable_count >= stability_threshold:
-                    # Append classified word to the buffer
-                    word_buffer.append(stable_gesture)
-                    # Display the current word and buffer on the screen
-                    display_current_word_on_screen(frame, stable_gesture, word_buffer)
+                    if stable_gesture in ["What", "How", "I", "He", "She", "It", "We", "They"]:
+                        stable_gesture = stable_gesture + " is"
+                    word_buffer.append(" "+stable_gesture)
+                    '''# Display the current word and buffer on the screen
+                    display_current_word_on_screen(frame, stable_gesture, word_buffer)'''
 
                     # If buffer has enough words, process them into a sentence
                     if len(word_buffer) >= 3:
-                        sentence = generate_sentence_from_gpt2(word_buffer)
+                        sentence = grammar_correct(word_buffer)
                         print(f"Generated Sentence: {sentence}")
 
                         # Speak the generated sentence
@@ -553,23 +574,23 @@ def draw_landmarks(image, landmark_point):
             cv.circle(image, (landmark[0], landmark[1]), 5, (255, 255, 255),
                       -1)
             cv.circle(image, (landmark[0], landmark[1]), 5, (0, 0, 0), 1)
-        if index == 16:  # 薬指：指先
+        if index == 16:  
             cv.circle(image, (landmark[0], landmark[1]), 8, (255, 255, 255),
                       -1)
             cv.circle(image, (landmark[0], landmark[1]), 8, (0, 0, 0), 1)
-        if index == 17:  # 小指：付け根
+        if index == 17: 
             cv.circle(image, (landmark[0], landmark[1]), 5, (255, 255, 255),
                       -1)
             cv.circle(image, (landmark[0], landmark[1]), 5, (0, 0, 0), 1)
-        if index == 18:  # 小指：第2関節
+        if index == 18: 
             cv.circle(image, (landmark[0], landmark[1]), 5, (255, 255, 255),
                       -1)
             cv.circle(image, (landmark[0], landmark[1]), 5, (0, 0, 0), 1)
-        if index == 19:  # 小指：第1関節
+        if index == 19: 
             cv.circle(image, (landmark[0], landmark[1]), 5, (255, 255, 255),
                       -1)
             cv.circle(image, (landmark[0], landmark[1]), 5, (0, 0, 0), 1)
-        if index == 20:  # 小指：指先
+        if index == 20: 
             cv.circle(image, (landmark[0], landmark[1]), 8, (255, 255, 255),
                       -1)
             cv.circle(image, (landmark[0], landmark[1]), 8, (0, 0, 0), 1)
@@ -660,7 +681,7 @@ def speak_in_background(text):
     tts_thread.start()
     tts_thread.join()
 
-# Function to process recognized words and generate sentences
+'''# Function to process recognized words and generate sentences
 def process_words_with_nlp(words):
     # Tokenize and POS tag the recognized words
     tokens = word_tokenize(" ".join(words))
@@ -670,13 +691,13 @@ def process_words_with_nlp(words):
     # (You would add more sophisticated logic here)
     sentence = " ".join([word for word, pos in tagged])
     
-    return sentence
+    return sentence'''
 
-# Function to generate sentences using GPT-2
+'''# Function to generate sentences using GPT-2
 def generate_sentence_from_gpt2(words):
     # Load pre-trained GPT-2 model and tokenizer
-    '''tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-    model = GPT2LMHeadModel.from_pretrained('gpt2')'''
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+    model = GPT2LMHeadModel.from_pretrained('gpt2')
 
     # Join the recognized classified words into a prompt
     input_text = " ".join(words)
@@ -697,7 +718,7 @@ def generate_sentence_from_gpt2(words):
     # Decode the generated text
     generated_sentence = tokenizer.decode(output[0], skip_special_tokens=True)
 
-    return generated_sentence
+    return generated_sentence'''
 
 # Function to display the current word and buffer on the screen
 def display_current_word_on_screen(frame, current_word, word_buffer):
@@ -709,6 +730,12 @@ def display_current_word_on_screen(frame, current_word, word_buffer):
     sentence = " ".join(word_buffer)
     cv.putText(frame, f"Sentence: {sentence}", (10, 70),
                 cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv.LINE_AA)
+
+def grammar_correct(word_buffer):
+    sentence = ' '.join(word_buffer)
+    # Correct the sentence
+    corrected_sentence = tool.correct(sentence)
+    return corrected_sentence
 
 if __name__ == '__main__':
     main()
