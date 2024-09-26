@@ -279,25 +279,7 @@ def select_mode(key, mode):
     # Map 0 ~ 9 (label 0 to 9)
     if 48 <= key <= 57:  # 0 ~ 9
         number = key - 48
-    
-    # Map a ~ z (label 10 to 35)
-    elif 97 <= key <= 122:  # a ~ z
-        number = key - 87  # 'a' becomes 10, 'b' becomes 11, etc.
-    
-    # Map A ~ Z (label 36 to 61)
-    elif 65 <= key <= 90:  # A ~ Z
-        number = key - 29  # 'A' becomes 36, 'B' becomes 37, etc.
-    
-    # Map F1-F12 keys (label 62 to 73)
-    elif 112 <= key <= 123:  # F1 ~ F12
-        number = key - 50  # 'F1' becomes 62, 'F2' becomes 63, etc.
-
-    # Map special keys for label 74 and 75 (Shift, Ctrl, etc.)
-    elif key == 16:  # Shift for label 74
-        number = 74
-    elif key == 17:  # Ctrl for label 75
-        number = 75
-
+        
     # Custom modes
     if key == 110:  # n for resetting mode
         mode = 0
