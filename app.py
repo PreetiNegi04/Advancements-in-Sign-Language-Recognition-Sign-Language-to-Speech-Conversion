@@ -20,28 +20,9 @@ import time
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
-'''# Load pre-trained GPT-2 model and tokenizer
-model_name = 'gpt2'
-tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-model = GPT2LMHeadModel.from_pretrained(model_name)'''
 
 import language_tool_python
- # Initialize the LanguageTool object
-tool = language_tool_python.LanguageTool('en-US')  # English (US) grammar rules
-
-'''def generate_sentence(classified_words):
-    # Create a prompt from classified words
-    prompt = "Generate a coherent sentence from the following words: " + " ".join(classified_words)
-    
-    # Encode the prompt
-    input_ids = tokenizer.encode(prompt, return_tensors='pt')
-    
-    # Generate text
-    output = model.generate(input_ids, max_length=50, num_return_sequences=1, no_repeat_ngram_size=2, early_stopping=True)
-    
-    # Decode the generated text
-    generated_sentence = tokenizer.decode(output[0], skip_special_tokens=True)
-    return generated_sentence'''
+tool = language_tool_python.LanguageTool('en-US')
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -129,7 +110,6 @@ def main():
 
     #  ########################################################################
     mode = 0
-    last_spoken_text = ""
     word_buffer = []
     while True:
         ret, frame = cap.read()
@@ -178,7 +158,6 @@ def main():
                 if hand_sign_id == "Not applicable":  # Point gesture
                     point_history.append(landmark_list[8])
 
-
                 else:
                     point_history.append([0, 0])
 
@@ -196,27 +175,6 @@ def main():
 
                 # Speak the gesture ID if it is different from the last one
                 detected_text = keypoint_classifier_labels[hand_sign_id]
-                '''# Process words with NLP to form a sentence
-                sentence = process_words_with_nlp(classified_words)'''
-                '''if detected_text != last_spoken_text:
-                    last_spoken_text = detected_text
-
-                     # Append classified word to the buffer
-                    word_buffer.append(last_spoken_text)
-
-                    # If buffer has enough words, process them into a sentence
-                    if len(word_buffer) >= 3:
-                        sentence = generate_sentence_from_gpt2(word_buffer)
-                        print(f"Generated Sentence: {sentence}")
-
-                        # Speak the generated sentence
-                        speak_in_background(sentence)
-
-                        # Clear the buffer after processing the sentence
-                        word_buffer.clear()
-
-                    # Wait briefly between frames
-                    time.sleep(0.1)'''
 
                 # Check if the gesture is stable over consecutive frames
                 if detected_text == stable_gesture:
@@ -227,11 +185,13 @@ def main():
                 
                 # If the gesture is stable for the required number of frames, process it
                 if stable_count >= stability_threshold:
-                    if stable_gesture in ["What", "How", "I", "He", "She", "It", "We", "They"]:
+                    if stable_gesture in ["What", "How", "He", "She", "It", "We", "They"]:
                         stable_gesture = stable_gesture + " is"
+                    
+                    if stable_gesture == "I":
+                        stable_gesture = "I am"
+
                     word_buffer.append(" "+stable_gesture)
-                    '''# Display the current word and buffer on the screen
-                    display_current_word_on_screen(frame, stable_gesture, word_buffer)'''
 
                     # If buffer has enough words, process them into a sentence
                     if len(word_buffer) >= 3:
@@ -602,12 +562,6 @@ def draw_info_text(image, brect, handedness, hand_sign_text,
     cv.putText(image, info_text, (brect[0] + 5, brect[1] - 4),
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
 
-    '''if finger_gesture_text != "":
-        cv.putText(image, "Finger Gesture:" + finger_gesture_text, (10, 60),
-                   cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4, cv.LINE_AA)
-        cv.putText(image, "Finger Gesture:" + finger_gesture_text, (10, 60),
-                   cv.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2,
-                   cv.LINE_AA)'''
 
     return image
 
@@ -638,12 +592,6 @@ def draw_info(image, fps, mode, number):
                        cv.LINE_AA)
     return image
 
-'''def play_sound(text):
-    tts = gTTS(text=text, lang='en')
-    tts.save("output.mp3")
-    pygame.mixer.init()
-    pygame.mixer.music.load("output.mp3")
-    pygame.mixer.music.play()'''
 
 def play_sound(text):
     try:
@@ -715,8 +663,11 @@ def display_current_word_on_screen(frame, current_word, word_buffer):
 
 def grammar_correct(word_buffer):
     sentence = ' '.join(word_buffer)
+    # Check the sentence for errors
+    matches = tool.check(sentence)
+    
     # Correct the sentence
-    corrected_sentence = tool.correct(sentence)
+    corrected_sentence = language_tool_python.utils.correct(sentence, matches)
     return corrected_sentence
 
 if __name__ == '__main__':
