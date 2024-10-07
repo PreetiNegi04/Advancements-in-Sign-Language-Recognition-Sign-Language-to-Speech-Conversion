@@ -69,6 +69,7 @@ def main():
     stable_count = 0
     stability_threshold = 5  # Number of frames the gesture must remain stable
     delay_after_speech = 2  # Seconds to wait after classifying a word
+    gesture_timeout = 5  # Seconds to wait before stopping classification
 
     # Model load #############################################################
     mp_hands = mp.solutions.hands
@@ -111,6 +112,7 @@ def main():
     #  ########################################################################
     mode = 0
     word_buffer = []
+    last_gesture_time = time.time()  # Reset the timer
     while True:
         ret, frame = cap.read()
         fps = cvFpsCalc.get()
@@ -137,6 +139,7 @@ def main():
 
         #  ####################################################################
         if results.multi_hand_landmarks is not None:
+            last_gesture_time = time.time()  # Reset the timer
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
                 # Bounding box calculation
@@ -193,7 +196,7 @@ def main():
 
                     word_buffer.append(" "+stable_gesture)
 
-                    # If buffer has enough words, process them into a sentence
+                    '''# If buffer has enough words, process them into a sentence
                     if len(word_buffer) >= 3:
                         sentence = grammar_correct(word_buffer)
                         print(f"Generated Sentence: {sentence}")
@@ -202,7 +205,7 @@ def main():
                         speak_in_background(sentence)
 
                         # Clear the buffer after processing the sentence
-                        word_buffer.clear()
+                        word_buffer.clear()'''
                     
                     # Add a delay after classifying the word
                     time.sleep(delay_after_speech)
@@ -221,6 +224,18 @@ def main():
                     point_history_classifier_labels[most_common_fg_id[0][0]],
                 )
         else:
+            if time.time() - last_gesture_time >= gesture_timeout:
+                # Stop classification if timeout is reached
+                print("No gesture detected. Stopping classification.")
+
+                sentence = grammar_correct(word_buffer)
+                print(f"Generated Sentence: {sentence}")
+
+                # Speak the generated sentence
+                speak_in_background(sentence)
+                
+                # Clear the buffer or reset state if necessary
+                word_buffer.clear()
             point_history.append([0, 0])
 
         debug_image = draw_point_history(debug_image, point_history)
