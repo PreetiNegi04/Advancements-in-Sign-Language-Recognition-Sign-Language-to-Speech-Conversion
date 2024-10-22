@@ -28,8 +28,8 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--width", help='cap width', type=int, default=1000)
-    parser.add_argument("--height", help='cap height', type=int, default=600)
+    parser.add_argument("--width", help='cap width', type=int, default=1200)
+    parser.add_argument("--height", help='cap height', type=int, default=800)
 
     parser.add_argument('--use_static_image_mode', action='store_true')
     parser.add_argument("--min_detection_confidence",
@@ -226,6 +226,7 @@ def main():
         else:
             if time.time() - last_gesture_time >= gesture_timeout:
                 # Stop classification if timeout is reached
+                last_gesture_time = time.time()  # Reset the timer
                 print("No gesture detected. Stopping classification.")
 
                 sentence = grammar_correct(word_buffer)
@@ -236,6 +237,9 @@ def main():
                 
                 # Clear the buffer or reset state if necessary
                 word_buffer.clear()
+                stable_gesture = None
+                stable_count = 0
+                
             point_history.append([0, 0])
 
         debug_image = draw_point_history(debug_image, point_history)
