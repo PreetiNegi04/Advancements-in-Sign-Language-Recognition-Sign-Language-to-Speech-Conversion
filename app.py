@@ -224,7 +224,7 @@ def main():
                     point_history_classifier_labels[most_common_fg_id[0][0]],
                 )
         else:
-            if time.time() - last_gesture_time >= gesture_timeout:
+            '''if time.time() - last_gesture_time >= gesture_timeout:
                 # Stop classification if timeout is reached
                 last_gesture_time = time.time()  # Reset the timer
                 print("No gesture detected. Stopping classification.")
@@ -238,7 +238,7 @@ def main():
                 # Clear the buffer or reset state if necessary
                 word_buffer.clear()
                 stable_gesture = None
-                stable_count = 0
+                stable_count = 0'''
                 
             point_history.append([0, 0])
 
